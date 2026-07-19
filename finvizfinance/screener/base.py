@@ -122,11 +122,17 @@ class Base:
             cols = row.findAll("td")[1:]
             info_dict = {}
             for i, col in enumerate(cols):
+                header = table_header[i]
+                # The ticker cell now embeds a logo <img> inside the <a>, so
+                # col.text concatenates a stray leading char (A -> "AA"). The
+                # real ticker is in the data-boxover-ticker attribute.
+                if header == "Ticker" and col.has_attr("data-boxover-ticker"):
+                    info_dict[header] = col["data-boxover-ticker"]
                 # check if the col is number
-                if i not in num_col_index:
-                    info_dict[table_header[i]] = col.text
+                elif i not in num_col_index:
+                    info_dict[header] = col.text
                 else:
-                    info_dict[table_header[i]] = number_covert(col.text)
+                    info_dict[header] = number_covert(col.text)
             frame.append(info_dict)
         if len(df) == 0:
             return pd.DataFrame(frame)

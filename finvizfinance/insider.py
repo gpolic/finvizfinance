@@ -64,7 +64,7 @@ class Insider:
             df(pandas.DataFrame): insider information table
         """
         # print(self.soup.prettify())
-        insider_trader = self.soup.find_all("table")[6]
+        insider_trader = self.soup.find("table", id="insider-table")
         rows = insider_trader.find_all("tr")
         # print(rows)
         table_header = [i.text.strip() for i in rows[0].find_all("th")] + [

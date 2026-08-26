@@ -344,7 +344,7 @@ class finvizfinance:
             try:
                 cols = row.find_all("td")
                 news_date = cols[0].text
-                title = cols[1].a.text
+                title = cols[1].a.text.strip()
                 link = cols[1].a["href"]
                 source = cols[1].span.text[1:-1]
                 news_time = news_date.split()

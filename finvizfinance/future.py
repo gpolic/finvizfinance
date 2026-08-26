@@ -38,10 +38,9 @@ class Future:
         soup = web_scrap("https://finviz.com/futures_performance.ashx", params)
 
         html = soup.prettify()
-        data = html[
-            html.find("var rows = ")
-            + 11 : html.find("FinvizInitFuturesPerformance(rows);")
-        ]
-        data = json.loads(data.strip()[:-1])
+        marker = "FinvizInitFuturesPerformance("
+        start = html.find(marker) + len(marker)
+        end = html.find("]", start) + 1
+        data = json.loads(html[start:end])
         df = pd.DataFrame(data)
         return df

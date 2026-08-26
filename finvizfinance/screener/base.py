@@ -203,7 +203,8 @@ class Base:
 
         page = self._get_page(soup)
         if page == 0:
-            print("No ticker found.")
+            if verbose == 1:
+                print("No ticker found.")
             return None
         df = self._parse_table(None, soup, limit)
         limit -= self.size

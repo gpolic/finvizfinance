@@ -80,12 +80,18 @@ class Insider:
                 continue
             info_dict = {}
             for i, col in enumerate(cols):
-                if i not in num_col_index:
-                    info_dict[table_header[i]] = col.text
+                header = table_header[i]
+                # The ticker cell embeds a logo <img>/<span> inside the <a>,
+                # so col.text concatenates a stray leading char (TROW -> "TTROW").
+                # The real ticker is in the data-boxover-ticker attribute.
+                if header == "Ticker" and col.has_attr("data-boxover-ticker"):
+                    info_dict[header] = col["data-boxover-ticker"]
+                elif i not in num_col_index:
+                    info_dict[header] = col.text
                     if i == len(cols) - 1:
                         info_dict["SEC Form 4 Link"] = col.find("a").attrs["href"]
                 else:
-                    info_dict[table_header[i]] = number_covert(col.text)
+                    info_dict[header] = number_covert(col.text)
                 info_dict["SEC Form 4 Link"] = cols[-1].find("a").attrs["href"]
             frame.append(info_dict)
         df = pd.DataFrame(frame)

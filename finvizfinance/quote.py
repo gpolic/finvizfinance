@@ -31,6 +31,23 @@ NUM_COL = [
 ]
 
 
+# columns holding two whitespace separated values
+SPLIT_COL = {
+    "Dividend Gr. 3/5Y": ["Dividend Gr. 3Y", "Dividend Gr. 5Y"],
+    "EPS past 3/5Y": ["EPS past 3Y", "EPS past 5Y"],
+    "Sales past 3/5Y": ["Sales past 3Y", "Sales past 5Y"],
+    "EPS/Sales Surpr.": ["EPS Surprise", "Sales Surprise"],
+    "52W High": ["52W High", "52W High Change"],
+    "52W Low": ["52W Low", "52W Low Change"],
+}
+
+# columns of the form "value (percentage)"
+PAREN_COL = {
+    "Dividend Est.": ["Dividend Est.", "Dividend Est. %"],
+    "Dividend TTM": ["Dividend TTM", "Dividend TTM %"],
+}
+
+
 class Quote:
     """quote
     Getting current price of the ticker
@@ -148,13 +165,15 @@ class finvizfinance:
         fundament_info["Country"] = links[2].text
         fundament_info["Exchange"] = links[-1].text
 
-        fundament_table = self.soup.find("table", class_="snapshot-table2")
-        rows = fundament_table.find_all("tr")
+        # finviz splits the snapshot into several tables sharing the same class
+        fundament_tables = self.soup.find_all("table", class_="snapshot-table2")
+        for fundament_table in fundament_tables:
+            rows = fundament_table.find_all("tr")
 
-        for row in rows:
-            cols = row.find_all("td")
-            cols = [i.text for i in cols]
-            fundament_info = self._parse_column(cols, raw, fundament_info)
+            for row in rows:
+                cols = row.find_all("td")
+                cols = [i.text for i in cols]
+                fundament_info = self._parse_column(cols, raw, fundament_info)
         self.info["fundament"] = fundament_info
 
         if output_format == "dict":
@@ -167,12 +186,25 @@ class finvizfinance:
             if i % 2 == 0:
                 header = value
             else:
-                if header == "Volatility":
+                value = value.strip()
+                if header in SPLIT_COL:
+                    fundament_info = self._parse_split_column(
+                        header, fundament_info, value, raw
+                    )
+                elif header in PAREN_COL:
+                    fundament_info = self._parse_paren_column(
+                        header, fundament_info, value, raw
+                    )
+                elif header == "Volatility":
                     fundament_info = self._parse_volatility(
                         header, fundament_info, value, raw
                     )
                 elif header == "52W Range":
                     fundament_info = self._parse_52w_range(
+                        header, fundament_info, value, raw
+                    )
+                elif header == "Option/Short":
+                    fundament_info = self._parse_option_short(
                         header, fundament_info, value, raw
                     )
                 elif header == "Optionable" or header == "Shortable":
@@ -182,6 +214,9 @@ class finvizfinance:
                         fundament_info[header] = True
                     else:
                         fundament_info[header] = False
+                elif header == "Trades":
+                    # placeholder cell with no data
+                    continue
                 else:
                     # Handle EPS Next Y keys with two different values
                     if header == "EPS next Y" and header in fundament_info.keys():
@@ -193,6 +228,44 @@ class finvizfinance:
                             fundament_info[header] = number_covert(value)
                         except ValueError:
                             fundament_info[header] = value
+        return fundament_info
+
+    def _parse_split_column(self, header, fundament_info, value, raw):
+        """Parse a cell holding two whitespace separated values."""
+        info_header = SPLIT_COL[header]
+        self._parse_value(header, fundament_info, value, raw, info_header, [0, 1])
+        return fundament_info
+
+    def _parse_paren_column(self, header, fundament_info, value, raw):
+        """Parse a cell of the form 'value (percentage)'."""
+        info_header = PAREN_COL[header]
+        match = re.match(r"^(\S+)\s*\(([^)]*)\)$", value)
+        if not match:
+            fundament_info[info_header[0]] = value if raw else None
+            fundament_info[info_header[1]] = "-" if raw else None
+            return fundament_info
+        values = [match.group(1), match.group(2)]
+        for name, item in zip(info_header, values):
+            if raw:
+                fundament_info[name] = item
+            else:
+                try:
+                    fundament_info[name] = number_covert(item)
+                except ValueError:
+                    fundament_info[name] = item
+        return fundament_info
+
+    def _parse_option_short(self, header, fundament_info, value, raw):
+        """Parse the combined 'Option/Short' cell, e.g. 'Yes / Yes'."""
+        values = [i.strip() for i in value.split("/")]
+        if len(values) != 2:
+            fundament_info[header] = value
+            return fundament_info
+        for name, item in zip(["Optionable", "Shortable"], values):
+            if raw:
+                fundament_info[name] = item
+            else:
+                fundament_info[name] = item == "Yes"
         return fundament_info
 
     def _parse_52w_range(self, header, fundament_info, value, raw):

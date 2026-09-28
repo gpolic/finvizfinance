@@ -25,7 +25,7 @@ class Calendar:
         Returns:
             df(pandas.DataFrame): economic calendar table
         """
-        soup = web_scrap("https://finviz.com/calendar.ashx")
+        soup = web_scrap("https://finviz.com/calendar/economic")
         # The calendar page is now a client-rendered React app; the entries
         # are shipped as JSON in the route-init-data script for hydration.
         data = json.loads(soup.find("script", id="route-init-data").text)

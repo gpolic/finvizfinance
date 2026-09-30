@@ -19,7 +19,19 @@ FUTURES_URL = "https://finviz.com/futures_performance.ashx"
 
 
 def _extract_rows(soup: Any) -> Any:
-    """Extract rows from either the legacy or current init call."""
+    """Extract rows from the current init-data script or a legacy init call."""
+    script = soup.find("script", id="futures-perf-init-data")
+    if script is not None:
+        data = decode_json_after(
+            script.string or "", 0, FUTURES_URL, "script#futures-perf-init-data"
+        )
+        rows = data.get("rows") if isinstance(data, dict) else None
+        if not isinstance(rows, list):
+            raise FinvizParseError(
+                url=FUTURES_URL, selector="script#futures-perf-init-data rows"
+            )
+        return rows
+
     html = soup.prettify()
     patterns = [
         r"var\s+rows\s*=\s*",

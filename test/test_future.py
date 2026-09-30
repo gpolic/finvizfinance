@@ -21,6 +21,21 @@ def test_future_current_client_rendered_format():
     assert list(df["perf"])[0]["day"] == 0.5
 
 
+def test_future_init_data_script_format():
+    use_session(html_response("futures_init_data.html"))
+    df = Future().performance()
+    assert list(df["ticker"]) == ["ES", "NQ"]
+    assert list(df["label"]) == ["S&P 500", "Nasdaq 100"]
+    assert df.iloc[0]["perfDayPct"] == 0.5
+    assert df.iloc[1]["perfWeekPct"] == 0.8
+
+
+def test_future_init_data_missing_rows_raises_parse_error():
+    use_session(html_response("futures_init_data_no_rows.html"))
+    with pytest.raises(FinvizParseError):
+        Future().performance()
+
+
 def test_future_timeframe_param():
     fake = use_session(html_response("futures.html"))
     Future().performance(timeframe="W")

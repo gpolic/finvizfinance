@@ -6,14 +6,15 @@
 """
 
 import sys
+import json
 import requests
 import pandas as pd
 from bs4 import BeautifulSoup
 from datetime import datetime, date
 
 headers = {
-    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) \
-            AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36"
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
 }
 session = requests.Session()
 
@@ -76,31 +77,45 @@ def image_scrap(url, ticker, out_dir):
         raise Exception(err)
 
 
-def scrap_function(url):
+PERF_COLUMNS = {
+    "5min": "Perf 5Min",
+    "Hour": "Perf Hour",
+    "Day": "Perf Day",
+    "Week": "Perf Week",
+    "Month": "Perf Month",
+    "Quarter": "Perf Quart",
+    "HalfYear": "Perf Half",
+    "Year": "Perf Year",
+    "Ytd": "Perf YTD",
+}
+
+
+def scrap_function(url, change="percent"):
     """Scrap forex, crypto information.
 
     Args:
         url(str): website
+        change(str): percent (default) or PIPS
     Returns:
         df(pandas.DataFrame): performance table
     """
     soup = web_scrap(url)
-    table = soup.find("table", class_="groups_table")
-    rows = table.find_all("tr")
-    table_header = [i.text.strip() for i in rows[0].find_all("th")][1:]
+    script = soup.find(
+        "script", id=lambda x: x is not None and x.endswith("-perf-init-data")
+    )
+    rows = json.loads(script.string)["rows"]
     frame = []
-    rows = rows[1:]
-    num_col_index = [i for i in range(2, len(table_header))]
     for row in rows:
-        cols = row.find_all("td")[1:]
-        info_dict = {}
-        for i, col in enumerate(cols):
-            if i not in num_col_index:
-                info_dict[table_header[i]] = col.text
+        info_dict = {"Ticker": row["ticker"], "Price": row["last"]}
+        for key, col in PERF_COLUMNS.items():
+            if change == "PIPS":
+                info_dict[col] = row.get(f"perf{key}Pips")
             else:
-                info_dict[table_header[i]] = number_covert(col.text)
+                value = row.get(f"perf{key}Pct")
+                info_dict[col] = value / 100 if value is not None else None
         frame.append(info_dict)
-    return pd.DataFrame(frame)
+    df = pd.DataFrame(frame)
+    return df.sort_values("Perf Day", ascending=False).reset_index(drop=True)
 
 
 def image_scrap_function(url, chart, timeframe, urlonly):

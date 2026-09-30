@@ -8,15 +8,18 @@ from finvizfinance.forex import Forex
 
 
 def test_forex_performance_real():
-    use_session(html_response("groups_table.html"))
+    use_session(html_response("forex_perf.html"))
     df = Forex().performance()
-    assert list(df["Name"]) == ["Bitcoin", "Ethereum"]
+    assert list(df["Pair"]) == ["AUD/USD", "EUR/USD"]
+    assert df.iloc[0]["Perf Day"] == 0.004
 
 
 def test_forex_performance_pips():
-    fake = use_session(html_response("groups_table.html"))
-    Forex().performance(change="PIPS")
+    fake = use_session(html_response("forex_perf.html"))
+    df = Forex().performance(change="PIPS")
     assert "v=1" in fake.calls[0]["url"]
+    assert list(df["Ticker"]) == ["AUDUSD", "EURUSD"]
+    assert df.iloc[0]["Perf Day"] == 28
 
 
 def test_forex_performance_drift_raises_parse_error():

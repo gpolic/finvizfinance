@@ -365,15 +365,64 @@ def scrap_group_table(soup: Any, url: str) -> pd.DataFrame:
     return pd.DataFrame(frame)
 
 
-def scrap_function(url: str) -> pd.DataFrame:
+# Suffix of a performance JSON key (``perf<Suffix>Pct`` / ``perf<Suffix>Pips``)
+# mapped to its DataFrame column.
+PERF_COLUMNS = {
+    "5min": "Perf 5Min",
+    "Hour": "Perf Hour",
+    "Day": "Perf Day",
+    "Week": "Perf Week",
+    "Month": "Perf Month",
+    "Quarter": "Perf Quart",
+    "HalfYear": "Perf Half",
+    "Year": "Perf Year",
+    "Ytd": "Perf YTD",
+}
+
+
+def scrap_function(url: str, change: str = "percent") -> pd.DataFrame:
     """Scrap forex, crypto information.
+
+    finviz no longer renders a ``groups_table`` on these pages; the rows are
+    embedded as JSON in a ``<script id="...-perf-init-data">`` tag.
 
     Args:
         url(str): website
+        change(str): percent (default) or PIPS
     Returns:
         df(pandas.DataFrame): performance table
     """
-    return scrap_group_table(web_scrap(url), url)
+    selector = "script#*-perf-init-data"
+    soup = web_scrap(url)
+    script = require(
+        soup.find("script", id=lambda x: x is not None and x.endswith("-perf-init-data")),
+        url,
+        selector,
+    )
+    data = decode_json_after(script.string or "", 0, url, selector)
+    rows = data.get("rows") if isinstance(data, dict) else None
+    if not isinstance(rows, list):
+        raise FinvizParseError(url=url, selector=f"{selector} rows")
+    # The old groups_table keyed forex rows by "Pair" and crypto rows by "Name".
+    name_col = "Pair" if script["id"].startswith("forex") else "Name"
+    frame = []
+    for row in rows:
+        info: dict[str, Any] = {
+            "Ticker": row.get("ticker"),
+            name_col: row.get("label"),
+            "Price": row.get("last"),
+        }
+        for key, col in PERF_COLUMNS.items():
+            if change == "PIPS":
+                info[col] = row.get(f"perf{key}Pips")
+            else:
+                value = row.get(f"perf{key}Pct")
+                info[col] = value / 100 if value is not None else None
+        frame.append(info)
+    df = pd.DataFrame(frame)
+    if df.empty:
+        return df
+    return df.sort_values("Perf Day", ascending=False).reset_index(drop=True)
 
 
 def image_scrap_function(

@@ -395,7 +395,9 @@ def scrap_function(url: str, change: str = "percent") -> pd.DataFrame:
     selector = "script#*-perf-init-data"
     soup = web_scrap(url)
     script = require(
-        soup.find("script", id=lambda x: x is not None and x.endswith("-perf-init-data")),
+        soup.find(
+            "script", id=lambda x: x is not None and x.endswith("-perf-init-data")
+        ),
         url,
         selector,
     )

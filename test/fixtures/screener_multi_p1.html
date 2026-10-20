@@ -1,23 +1,12 @@
 <!DOCTYPE html>
 <html>
-<head><title>Screener Overview Page 1</title></head>
+<head><title>Screener Multi Page 1</title></head>
 <body>
-<select id="pageSelect">
-  <option value="1">Page 1/2</option>
-  <option value="21">Page 2/2</option>
-</select>
-<table class="screener_table">
-  <tr><th>No.</th><th>Ticker</th><th>Company</th><th>Sector</th><th>Price</th><th>Change</th></tr>
-  <tr>
-    <td>1</td>
-    <td align="left" data-boxover-ticker="AAPL"><span><a class="company-ticker" href="stock?t=AAPL"><img alt="AAPL logo" src="https://logo.finviz.com/AAPL.svg"/><span>AAPL</span></a><a class="tab-link" href="stock?t=AAPL">AAPL</a></span></td>
-    <td>Apple Inc.</td><td>Technology</td><td>150.00</td><td>1.20%</td>
-  </tr>
-  <tr>
-    <td>2</td>
-    <td align="left" data-boxover-ticker="MSFT"><span><a class="company-ticker" href="stock?t=MSFT"><img alt="MSFT logo" src="https://logo.finviz.com/MSFT.svg"/><span>MSFT</span></a><a class="tab-link" href="stock?t=MSFT">MSFT</a></span></td>
-    <td>Microsoft</td><td>Technology</td><td>410.00</td><td>-0.50%</td>
-  </tr>
-</table>
+<div class="fv-table screener_results">
+<p class="fv-table_toolbar-count">#1 / 3 Total</p>
+<div class="fv-table_header-row" role="row"><div class="fv-table_header-cell" data-column-id="row" role="columnheader"><span class="fv-table_header-label">row</span></div><div class="fv-table_header-cell" data-column-id="ticker" role="columnheader"><span class="fv-table_header-label">ticker</span></div><div class="fv-table_header-cell" data-column-id="company" role="columnheader"><span class="fv-table_header-label">company</span></div><div class="fv-table_header-cell" data-column-id="sector" role="columnheader"><span class="fv-table_header-label">sector</span></div><div class="fv-table_header-cell" data-column-id="price" role="columnheader"><span class="fv-table_header-label">price</span></div><div class="fv-table_header-cell" data-column-id="change" role="columnheader"><span class="fv-table_header-label">change</span></div></div>
+<div class="fv-table_body"><div class="fv-table_row" role="row" data-row-key="AAPL"><div class="fv-table_cell" data-column-id="row" role="gridcell">1</div><div class="fv-table_cell" data-column-id="ticker" role="gridcell">AAPLAAPL</div><div class="fv-table_cell" data-column-id="company" role="gridcell">Apple Inc.</div><div class="fv-table_cell" data-column-id="sector" role="gridcell">Technology</div><div class="fv-table_cell" data-column-id="price" role="gridcell">150.0</div><div class="fv-table_cell" data-column-id="change" role="gridcell">1.2</div></div><div class="fv-table_row" role="row" data-row-key="MSFT"><div class="fv-table_cell" data-column-id="row" role="gridcell">2</div><div class="fv-table_cell" data-column-id="ticker" role="gridcell">MSFTMSFT</div><div class="fv-table_cell" data-column-id="company" role="gridcell">Microsoft</div><div class="fv-table_cell" data-column-id="sector" role="gridcell">Technology</div><div class="fv-table_cell" data-column-id="price" role="gridcell">410.0</div><div class="fv-table_cell" data-column-id="change" role="gridcell">-0.5</div></div></div>
+</div>
+<script type="application/json" data-ssr-props="ssr-island-1">{"url": "/screener/stocks?v=111", "screenerType": "stocks", "settings": {"hasRedesignEnabled": true}, "selectedColumns": ["row", "ticker"], "data": {"rows": [{"text": {"ticker": "AAPL", "company": "Apple Inc.", "sector": "Technology"}, "numbers": {"price": 150.0, "change": 1.2}}, {"text": {"ticker": "MSFT", "company": "Microsoft", "sector": "Technology"}, "numbers": {"price": 410.0, "change": -0.5}}], "totalCount": 3, "firstRow": 0, "pageSize": 2}}</script>
 </body>
 </html>

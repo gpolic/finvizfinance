@@ -13,12 +13,7 @@ from typing import Any
 
 from finvizfinance.constants import order_dict
 from finvizfinance.screener.base import Base
-from finvizfinance.util import (
-    progress_bar,
-    require,
-    validate_choice,
-    web_scrap,
-)
+from finvizfinance.util import progress_bar, validate_choice, web_scrap
 
 logger = logging.getLogger(__name__)
 
@@ -33,19 +28,13 @@ class Ticker(Base):
     def _screener_helper(
         self, i: int, page: int, soup: Any, tickers: list[str], limit: int
     ) -> list[str]:
-        td = require(
-            soup.find("td", class_="screener-tickers"),
-            self.url,
-            "td.screener-tickers",
-        )
-        page_tickers = td.find_all("span")
+        rows = self._screener_data(soup)["rows"]
         if i == page - 1:
-            page_tickers = page_tickers[: ((limit - 1) % 1000 + 1)]
-        for span in page_tickers:
-            parts = span.text.split("\xa0")
-            # Cells normally read "<rank>\xa0<TICKER>"; fall back to the whole
-            # text when the NBSP-separated rank is absent (avoids IndexError).
-            tickers.append(parts[1] if len(parts) > 1 else parts[0])
+            rows = rows[: ((limit - 1) % 1000 + 1)]
+        for row in rows:
+            ticker = (row.get("text") or {}).get("ticker")
+            if ticker:
+                tickers.append(ticker)
         return tickers
 
     def screener_view(  # type: ignore[override]  # public API intentionally differs from Base

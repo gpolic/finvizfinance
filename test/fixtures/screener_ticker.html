@@ -2,12 +2,11 @@
 <html>
 <head><title>Screener Ticker View</title></head>
 <body>
-<select id="pageSelect"><option value="1">Page 1/1</option></select>
-<table>
-  <tr><td class="screener-tickers">
-    <span>1&nbsp;AAPL</span>
-    <span>2&nbsp;MSFT</span>
-  </td></tr>
-</table>
+<div class="fv-table screener_results">
+<p class="fv-table_toolbar-count">#1 / 2 Total</p>
+<div class="fv-table_header-row" role="row"></div>
+<div class="fv-table_body"><div class="fv-table_row" role="row" data-row-key="AAPL"></div><div class="fv-table_row" role="row" data-row-key="MSFT"></div></div>
+</div>
+<script type="application/json" data-ssr-props="ssr-island-1">{"url": "/screener/stocks?v=111", "screenerType": "stocks", "settings": {"hasRedesignEnabled": true}, "selectedColumns": ["row", "ticker"], "data": {"rows": [{"text": {"ticker": "AAPL"}, "numbers": {}}, {"text": {"ticker": "MSFT"}, "numbers": {}}], "totalCount": 2, "firstRow": 0, "pageSize": 1000}}</script>
 </body>
 </html>

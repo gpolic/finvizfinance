@@ -2,17 +2,11 @@
 <html>
 <head><title>Screener Custom (duplicate Dividend columns) Page 2</title></head>
 <body>
-<select id="pageSelect">
-  <option value="1">Page 1/2</option>
-  <option value="21">Page 2/2</option>
-</select>
-<table class="screener_table">
-  <tr><th>No.</th><th>Ticker</th><th>Dividend</th><th>Sector</th><th>Dividend</th></tr>
-  <tr>
-    <td>3</td>
-    <td align="left" data-boxover-ticker="GOOGL"><span><a class="company-ticker" href="stock?t=GOOGL"><span>GOOGL</span></a><a class="tab-link" href="stock?t=GOOGL">GOOGL</a></span></td>
-    <td>0.00%</td><td>Communication Services</td><td>0.50</td>
-  </tr>
-</table>
+<div class="fv-table screener_results">
+<p class="fv-table_toolbar-count">#3 / 3 Total</p>
+<div class="fv-table_header-row" role="row"><div class="fv-table_header-cell" data-column-id="row" role="columnheader"><span class="fv-table_header-label">row</span></div><div class="fv-table_header-cell" data-column-id="ticker" role="columnheader"><span class="fv-table_header-label">ticker</span></div><div class="fv-table_header-cell" data-column-id="dividendYield" role="columnheader"><span class="fv-table_header-label">dividendYield</span></div></div>
+<div class="fv-table_body"><div class="fv-table_row" role="row" data-row-key="GOOGL"><div class="fv-table_cell" data-column-id="row" role="gridcell">3</div><div class="fv-table_cell" data-column-id="ticker" role="gridcell">GOOGLGOOGL</div><div class="fv-table_cell" data-column-id="dividendYield" role="gridcell">0.4</div></div></div>
+</div>
+<script type="application/json" data-ssr-props="ssr-island-1">{"url": "/screener/stocks?v=111", "screenerType": "stocks", "settings": {"hasRedesignEnabled": true}, "selectedColumns": ["row", "ticker"], "data": {"rows": [{"text": {"ticker": "GOOGL", "sector": "Communication Services"}, "numbers": {"dividendYield": 0.4, "dividend": 0.8}}], "totalCount": 3, "firstRow": 2, "pageSize": 2}}</script>
 </body>
 </html>

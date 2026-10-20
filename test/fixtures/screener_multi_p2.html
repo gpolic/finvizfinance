@@ -1,18 +1,12 @@
 <!DOCTYPE html>
 <html>
-<head><title>Screener Overview Page 2</title></head>
+<head><title>Screener Multi Page 2</title></head>
 <body>
-<select id="pageSelect">
-  <option value="1">Page 1/2</option>
-  <option value="21">Page 2/2</option>
-</select>
-<table class="screener_table">
-  <tr><th>No.</th><th>Ticker</th><th>Company</th><th>Sector</th><th>Price</th><th>Change</th></tr>
-  <tr>
-    <td>3</td>
-    <td align="left" data-boxover-ticker="GOOGL"><span><a class="company-ticker" href="stock?t=GOOGL"><img alt="GOOGL logo" src="https://logo.finviz.com/GOOGL.svg"/><span>GOOGL</span></a><a class="tab-link" href="stock?t=GOOGL">GOOGL</a></span></td>
-    <td>Alphabet</td><td>Communication Services</td><td>170.00</td><td>0.80%</td>
-  </tr>
-</table>
+<div class="fv-table screener_results">
+<p class="fv-table_toolbar-count">#3 / 3 Total</p>
+<div class="fv-table_header-row" role="row"><div class="fv-table_header-cell" data-column-id="row" role="columnheader"><span class="fv-table_header-label">row</span></div><div class="fv-table_header-cell" data-column-id="ticker" role="columnheader"><span class="fv-table_header-label">ticker</span></div><div class="fv-table_header-cell" data-column-id="company" role="columnheader"><span class="fv-table_header-label">company</span></div><div class="fv-table_header-cell" data-column-id="sector" role="columnheader"><span class="fv-table_header-label">sector</span></div><div class="fv-table_header-cell" data-column-id="price" role="columnheader"><span class="fv-table_header-label">price</span></div><div class="fv-table_header-cell" data-column-id="change" role="columnheader"><span class="fv-table_header-label">change</span></div></div>
+<div class="fv-table_body"><div class="fv-table_row" role="row" data-row-key="GOOGL"><div class="fv-table_cell" data-column-id="row" role="gridcell">3</div><div class="fv-table_cell" data-column-id="ticker" role="gridcell">GOOGLGOOGL</div><div class="fv-table_cell" data-column-id="company" role="gridcell">Alphabet</div><div class="fv-table_cell" data-column-id="sector" role="gridcell">Communication Services</div><div class="fv-table_cell" data-column-id="price" role="gridcell">170.0</div><div class="fv-table_cell" data-column-id="change" role="gridcell">0.3</div></div></div>
+</div>
+<script type="application/json" data-ssr-props="ssr-island-1">{"url": "/screener/stocks?v=111", "screenerType": "stocks", "settings": {"hasRedesignEnabled": true}, "selectedColumns": ["row", "ticker"], "data": {"rows": [{"text": {"ticker": "GOOGL", "company": "Alphabet", "sector": "Communication Services"}, "numbers": {"price": 170.0, "change": 0.3}}], "totalCount": 3, "firstRow": 2, "pageSize": 2}}</script>
 </body>
 </html>

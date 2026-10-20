@@ -1,5 +1,6 @@
 """Offline fixture tests for the screener views (see test_quote for the pattern)."""
 
+import pandas as pd
 import pytest
 from conftest import blocked_response, html_response, use_session
 
@@ -34,10 +35,9 @@ def test_screener_overview_multipage():
 
 
 def test_screener_ticker_not_doubled():
-    # Regression (#159): finviz nests two anchors in the ticker cell (a
-    # logo/company-ticker link + a tab-link), so the cell's text repeats the
-    # symbol ("AAPL" -> "AAPLAAPL"). The parser must read the clean value from
-    # the ``data-boxover-ticker`` attribute, without disturbing other columns.
+    # Regression (#159): the ticker cell's text repeats the symbol (logo +
+    # link: "AAPL" -> "AAPLAAPL"). The parser must read the clean value from
+    # the embedded JSON rows, without disturbing other columns.
     use_session(html_response("screener_overview.html"))
     df = Overview().screener_view(verbose=0)
     assert list(df["Ticker"]) == ["AAPL", "MSFT"]
@@ -46,17 +46,19 @@ def test_screener_ticker_not_doubled():
 
 def test_screener_duplicate_headers_preserved_across_pages():
     # Regression (#150): a wide custom view can return duplicate header labels
-    # (finviz renders two "Dividend" columns). The old name-keyed dict collapsed
-    # them, silently shrinking page 1 to a single "Dividend" and then raising
-    # ``IndexError`` while parsing page 2, once the cell count exceeded the
-    # now-shorter header list.
+    # (Dividend Yield and Dividend are both "Dividend"). A name-keyed dict
+    # collapsed them, silently shrinking the frame. The fixture's grid only
+    # renders the first columns (finviz virtualizes wide views), so the
+    # columns must come from the requested indexes, not the DOM.
     use_session(
         [
             html_response("screener_custom_dupcols_p1.html"),
             html_response("screener_custom_dupcols_p2.html"),
         ]
     )
-    df = Custom().screener_view(limit=100000, verbose=0, sleep_sec=0)
+    df = Custom().screener_view(
+        limit=100000, verbose=0, sleep_sec=0, columns=[1, 14, 3, 75]
+    )
     # Both "Dividend" columns survive (pandas allows duplicate labels)...
     assert list(df.columns) == ["Ticker", "Dividend", "Sector", "Dividend"]
     # ...all three rows across both pages parsed (no IndexError, no collapse)...
@@ -71,8 +73,38 @@ def test_screener_duplicate_headers_preserved_across_pages():
     assert df.iloc[0, 1] != df.iloc[0, 3]
 
 
-def test_screener_drift_raises_parse_error():
-    use_session(html_response("screener_drift.html"))
+def test_screener_values_match_legacy_table():
+    # The JSON carries raw values; they are converted to what the legacy
+    # table's text cells parsed to ("3.00T" -> 3e12, "0.45%" -> 0.0045).
+    use_session(html_response("screener_values.html"))
+    df = Overview().screener_view(verbose=0)
+    assert list(df.columns) == [
+        "Ticker",
+        "Market Cap",
+        "Fwd P/E",
+        "Dividend",
+        "Volume",
+        "Earnings",
+        "IPO Date",
+        "Index",
+    ]
+    aapl, newco = df.iloc[0], df.iloc[1]
+    assert aapl["Market Cap"] == pytest.approx(3000000.5e6)
+    assert aapl["Fwd P/E"] == pytest.approx(28.5)
+    assert aapl["Dividend"] == pytest.approx(0.0045)
+    assert aapl["Volume"] == 52000000.0
+    assert aapl["Earnings"] == "May 02/a"
+    assert aapl["IPO Date"] == "12/12/1980"
+    assert aapl["Index"] == "DJIA, S&P 500"
+    # No session time -> no before/after suffix; absent values are missing.
+    assert newco["Earnings"] == "May 03"
+    assert pd.isna(newco["Fwd P/E"])
+    assert pd.isna(newco["IPO Date"])
+
+
+@pytest.mark.parametrize("fixture", ["screener_drift.html", "screener_drift_json.html"])
+def test_screener_drift_raises_parse_error(fixture):
+    use_session(html_response(fixture))
     with pytest.raises(FinvizParseError):
         Overview().screener_view(verbose=0)
 
@@ -98,15 +130,6 @@ def test_screener_ticker_wall_raises_blocked_error():
     use_session(blocked_response())
     with pytest.raises(FinvizBlockedError):
         Ticker().screener_view(verbose=0)
-
-
-def test_screener_ticker_missing_nbsp_no_indexerror():
-    # Regression: a ticker cell span without the "<rank>\xa0<TICKER>" NBSP
-    # layout made ``text.split("\xa0")[1]`` raise IndexError. The parser must
-    # fall back to the span's whole text instead of crashing.
-    use_session(html_response("screener_ticker_no_nbsp.html"))
-    tickers = Ticker().screener_view(verbose=0)
-    assert tickers == ["AAPL", "MSFT"]
 
 
 def test_screener_get_settings():

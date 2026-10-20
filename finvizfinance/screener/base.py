@@ -9,23 +9,59 @@
 from __future__ import annotations
 
 import logging
+import math
 import warnings
+from datetime import datetime
 from time import sleep
 from typing import Any
 
 import pandas as pd
 
-from finvizfinance.constants import NUMBER_COL, filter_dict, order_dict, signal_dict
+from finvizfinance.constants import (
+    SCREENER_COLUMNS,
+    filter_dict,
+    order_dict,
+    signal_dict,
+)
+from finvizfinance.exceptions import FinvizParseError
 from finvizfinance.quote import finvizfinance
 from finvizfinance.util import (
-    number_convert,
+    decode_json_after,
     progress_bar,
-    require,
     validate_choice,
     web_scrap,
 )
 
 logger = logging.getLogger(__name__)
+
+_COLUMNS_BY_ID = {cid: (name, kind) for cid, name, kind in SCREENER_COLUMNS.values()}
+
+
+def _cell_value(value: Any, kind: str) -> Any:
+    """Convert a raw screener JSON value to the legacy table representation."""
+    if value is None or kind in ("text", "raw"):
+        return value
+    if kind in ("earnings", "date"):
+        try:
+            parsed = datetime.fromisoformat(str(value))
+        except ValueError:
+            return value
+        if kind == "date":
+            return parsed.strftime("%m/%d/%Y")
+        # Legacy earnings cells read "Oct 19/b" (before open) or "/a" (after close).
+        label = parsed.strftime("%b %d")
+        if parsed.hour or parsed.minute:
+            label += "/b" if parsed.hour < 12 else "/a"
+        return label
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return value
+    if kind == "millions":
+        return number * 1e6
+    if kind == "pct":
+        return number / 100
+    return number
 
 
 class Base:
@@ -102,87 +138,73 @@ class Base:
         self._set_ticker(ticker)
         self._set_filters(filters_dict)
 
+    def _screener_data(self, soup: Any) -> dict:
+        """Return the screener's embedded ``data`` payload.
+
+        The redesigned screener renders rows into a virtualized CSS grid (wide
+        custom views only put the visible columns in the DOM), so the complete
+        rows are read from the server-side-render JSON island instead.
+        """
+        selector = "script[data-ssr-props] screener data"
+        for script in soup.find_all("script", type="application/json"):
+            if not script.has_attr("data-ssr-props"):
+                continue
+            payload = decode_json_after(script.string or "", 0, self.url, selector)
+            data = payload.get("data") if isinstance(payload, dict) else None
+            if isinstance(data, dict) and isinstance(data.get("rows"), list):
+                return data
+        raise FinvizParseError(url=self.url, selector=selector)
+
     def _get_page(self, soup: Any) -> int:
         """Check the page number"""
-        select = soup.find(id="pageSelect")
-        if select is None:
-            return 0
-        return len(select.find_all("option"))
+        data = self._screener_data(soup)
+        total = int(data.get("totalCount") or 0)
+        page_size = int(data.get("pageSize") or self.size)
+        return math.ceil(total / page_size)
 
-    def _get_table(
-        self,
-        rows: Any,
-        df: pd.DataFrame,
-        num_col_index: list[int],
-        table_header: list[str],
-        limit: int = -1,
-    ) -> pd.DataFrame:
-        """Get screener table helper function.
-
-        Returns:
-            df(pandas.DataFrame): screener information table
-        """
-        rows = rows[1:]
-        if limit != -1:
-            rows = rows[0:limit]
-
-        frame = []
-        for row in rows:
-            cols = row.find_all("td")[1:]
-            # Build each row positionally, not keyed by header name: finviz can
-            # return duplicate header labels (e.g. two "Dividend" columns in a
-            # wide custom view). A name-keyed dict silently collapses those,
-            # shrinking the frame's width and raising IndexError on the next
-            # page once the cell count exceeds the (now shorter) header list.
-            row_values = []
-            for i, col in enumerate(cols):
-                if i >= len(table_header):
-                    break
-                if table_header[i] == "Ticker" and col.has_attr("data-boxover-ticker"):
-                    # The ticker cell nests two anchors (logo/company-ticker +
-                    # a tab-link), so col.text repeats the symbol ("AAPL" ->
-                    # "AAPLAAPL"). The clean value lives in this attribute.
-                    row_values.append(col["data-boxover-ticker"])
-                elif i in num_col_index:
-                    row_values.append(number_convert(col.text))
-                else:
-                    row_values.append(col.text)
-            # Pad short rows so every row matches the header width.
-            row_values.extend([None] * (len(table_header) - len(row_values)))
-            frame.append(row_values)
-        new_df = pd.DataFrame(frame, columns=table_header)
-        if len(df) == 0:
-            return new_df
-        return pd.concat([df, new_df], ignore_index=True)
-
-    def _screener_table(self, soup: Any) -> Any:
-        """Locate the screener results table, or raise on a Structural break."""
-        return require(
-            soup.find("table", class_="screener_table"),
-            self.url,
-            "table.screener_table",
-        )
-
-    def _parse_table_header(self, soup: Any) -> list[str]:
-        table = self._screener_table(soup)
-        rows = table.findAll("tr")
-        table_headers = [i.text.strip() for i in rows[0].findAll("th")][1:]
-        return table_headers
+    def _column_ids(self, soup: Any) -> list[str]:
+        """Finviz column ids of the current view, in display order."""
+        if self.request_params.get("c"):
+            indexes = [int(i) for i in str(self.request_params["c"]).split(",")]
+            ids = [SCREENER_COLUMNS[i][0] for i in indexes if i in SCREENER_COLUMNS]
+        else:
+            # Preset views are narrow enough that every header is rendered.
+            ids = [
+                cell["data-column-id"]
+                for cell in soup.select(".fv-table_header-cell[data-column-id]")
+            ]
+        if not ids:
+            raise FinvizParseError(url=self.url, selector=".fv-table_header-cell")
+        # The rank column was never part of the returned table.
+        return [i for i in ids if i != "row"]
 
     def _parse_table(
         self, df: pd.DataFrame | None, soup: Any, limit: int
     ) -> pd.DataFrame:
-        if df is None:
-            table_headers = self._parse_table_header(soup)
-            df = pd.DataFrame([], columns=table_headers)
-        table_headers = list(df.columns)
-        num_col_index = [
-            table_headers.index(i) for i in table_headers if i in NUMBER_COL
+        rows = self._screener_data(soup)["rows"]
+        if limit != -1:
+            rows = rows[0:limit]
+        columns = [
+            (i, *_COLUMNS_BY_ID.get(i, (i, "raw"))) for i in self._column_ids(soup)
         ]
-        table = self._screener_table(soup)
-        rows = table.find_all("tr")
-        df = self._get_table(rows, df, num_col_index, table_headers, limit)
-        return df
+        table_header = [name for _, name, _ in columns]
+        # Build each row positionally, not keyed by header name: a view can
+        # carry duplicate header labels (e.g. the two "Dividend" columns of a
+        # wide custom view), which a name-keyed dict would silently collapse.
+        frame = []
+        for row in rows:
+            text = row.get("text") or {}
+            numbers = row.get("numbers") or {}
+            frame.append(
+                [
+                    _cell_value(numbers.get(cid, text.get(cid)), kind)
+                    for cid, _, kind in columns
+                ]
+            )
+        new_df = pd.DataFrame(frame, columns=table_header)
+        if df is None or len(df) == 0:
+            return new_df
+        return pd.concat([df, new_df], ignore_index=True)
 
     def _parse_columns(self, columns: list | None) -> None:
         return

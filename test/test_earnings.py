@@ -11,9 +11,9 @@ def test_earnings_partition_financial():
     use_session(html_response("earnings_screener.html"))
     earnings = Earnings("This Week")
     days = earnings.partition_days("financial")
-    assert set(days.keys()) == {"May 02", "May 03"}
-    assert len(days["May 02"]) == 2
-    assert len(days["May 03"]) == 1
+    assert set(days.keys()) == {"May 02/a", "May 03/b"}
+    assert len(days["May 02/a"]) == 2
+    assert len(days["May 03/b"]) == 1
 
 
 def test_earnings_partition_overview():
@@ -21,7 +21,7 @@ def test_earnings_partition_overview():
     use_session(html_response("earnings_screener.html"))
     earnings = Earnings("This Week")
     days = earnings.partition_days("overview")
-    assert set(days["May 02"]["Ticker"]) == {"AAPL", "MSFT"}
+    assert set(days["May 02/a"]["Ticker"]) == {"AAPL", "MSFT"}
 
 
 def test_earnings_wall_raises_blocked_error():

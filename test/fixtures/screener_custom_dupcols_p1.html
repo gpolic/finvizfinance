@@ -2,22 +2,11 @@
 <html>
 <head><title>Screener Custom (duplicate Dividend columns) Page 1</title></head>
 <body>
-<select id="pageSelect">
-  <option value="1">Page 1/2</option>
-  <option value="21">Page 2/2</option>
-</select>
-<table class="screener_table">
-  <tr><th>No.</th><th>Ticker</th><th>Dividend</th><th>Sector</th><th>Dividend</th></tr>
-  <tr>
-    <td>1</td>
-    <td align="left" data-boxover-ticker="AAPL"><span><a class="company-ticker" href="stock?t=AAPL"><span>AAPL</span></a><a class="tab-link" href="stock?t=AAPL">AAPL</a></span></td>
-    <td>0.50%</td><td>Technology</td><td>1.00</td>
-  </tr>
-  <tr>
-    <td>2</td>
-    <td align="left" data-boxover-ticker="MSFT"><span><a class="company-ticker" href="stock?t=MSFT"><span>MSFT</span></a><a class="tab-link" href="stock?t=MSFT">MSFT</a></span></td>
-    <td>0.80%</td><td>Technology</td><td>3.00</td>
-  </tr>
-</table>
+<div class="fv-table screener_results">
+<p class="fv-table_toolbar-count">#1 / 3 Total</p>
+<div class="fv-table_header-row" role="row"><div class="fv-table_header-cell" data-column-id="row" role="columnheader"><span class="fv-table_header-label">row</span></div><div class="fv-table_header-cell" data-column-id="ticker" role="columnheader"><span class="fv-table_header-label">ticker</span></div><div class="fv-table_header-cell" data-column-id="dividendYield" role="columnheader"><span class="fv-table_header-label">dividendYield</span></div></div>
+<div class="fv-table_body"><div class="fv-table_row" role="row" data-row-key="AAPL"><div class="fv-table_cell" data-column-id="row" role="gridcell">1</div><div class="fv-table_cell" data-column-id="ticker" role="gridcell">AAPLAAPL</div><div class="fv-table_cell" data-column-id="dividendYield" role="gridcell">0.5</div></div><div class="fv-table_row" role="row" data-row-key="MSFT"><div class="fv-table_cell" data-column-id="row" role="gridcell">2</div><div class="fv-table_cell" data-column-id="ticker" role="gridcell">MSFTMSFT</div><div class="fv-table_cell" data-column-id="dividendYield" role="gridcell">0.8</div></div></div>
+</div>
+<script type="application/json" data-ssr-props="ssr-island-1">{"url": "/screener/stocks?v=111", "screenerType": "stocks", "settings": {"hasRedesignEnabled": true}, "selectedColumns": ["row", "ticker"], "data": {"rows": [{"text": {"ticker": "AAPL", "sector": "Technology"}, "numbers": {"dividendYield": 0.5, "dividend": 1.0}}, {"text": {"ticker": "MSFT", "sector": "Technology"}, "numbers": {"dividendYield": 0.8, "dividend": 3.0}}], "totalCount": 3, "firstRow": 0, "pageSize": 2}}</script>
 </body>
 </html>

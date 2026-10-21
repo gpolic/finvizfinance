@@ -2,10 +2,16 @@
 
 import pandas as pd
 import pytest
-from conftest import blocked_response, html_response, use_session
+from conftest import FakeResponse, blocked_response, html_response, use_session
 
+from finvizfinance.etf_constants import ETF_FILTERS
 from finvizfinance.exceptions import FinvizBlockedError, FinvizParseError
-from finvizfinance.screener import get_filter_options, get_filters, get_signal
+from finvizfinance.screener import (
+    etf_filters,
+    get_filter_options,
+    get_filters,
+    get_signal,
+)
 from finvizfinance.screener.custom import Custom
 from finvizfinance.screener.financial import Financial
 from finvizfinance.screener.overview import Overview
@@ -148,6 +154,114 @@ def test_screener_views_parse_table(view_cls):
     use_session(html_response("screener_overview.html"))
     df = view_cls().screener_view(verbose=0)
     assert list(df["Ticker"]) == ["AAPL", "MSFT"]
+
+
+def test_screener_etf_overview_columns():
+    # An ETF-filtered request is served by finviz's ETF screener, whose
+    # e.-prefixed column ids map to readable DataFrame columns.
+    use_session(html_response("screener_etf_overview.html"))
+    df = Overview().screener_view(verbose=0)
+    assert list(df.columns) == [
+        "Ticker",
+        "Company",
+        "Category",
+        "Tags",
+        "Dividend",
+        "Price",
+        "Change",
+    ]
+    assert list(df["Category"]) == ["U.S. Equity - Large Cap", "Bonds - Broad Market"]
+    assert df["Dividend"].iloc[0] == pytest.approx(0.012)
+
+
+@pytest.mark.parametrize("view_cls", [Financial, Ownership, Valuation])
+def test_screener_stock_only_view_warns_on_etf_fallback(view_cls):
+    # The ETF screener has no Valuation/Financial/Ownership view; finviz
+    # answers with its ETF overview columns, which must not pass silently.
+    use_session(html_response("screener_etf_overview.html"))
+    with pytest.warns(UserWarning, match="ETF screener has no"):
+        df = view_cls().screener_view(verbose=0)
+    assert "Category" in df.columns
+
+
+@pytest.mark.parametrize("view_cls", [Overview, Performance, Technical])
+def test_screener_etf_capable_view_does_not_warn(view_cls, recwarn):
+    use_session(html_response("screener_etf_overview.html"))
+    view_cls().screener_view(verbose=0)
+    assert not [w for w in recwarn if "ETF screener" in str(w.message)]
+
+
+def test_screener_etf_filters():
+    view = Overview()
+    view.set_filter(
+        filters_dict={
+            "Industry": "Exchange Traded Fund",
+            "Single Category": "Bonds - Broad Market",
+            "Net Expense Ratio": "Under 0.1%",
+            "Net Fund Flows": "1 Month - Over 0%",
+        }
+    )
+    assert view.request_params["f"] == (
+        "ind_exchangetradedfund,etf_category_bondsbroadmarket,"
+        "etf_netexpense_u01,etf_fundflows_1mo0"
+    )
+
+
+# A minimal ETF screener page: one usable filter with a brand-new option, an
+# elite-only option, and an elite-only filter.
+ETF_FILTERS_PAGE = (
+    '<script>var data = {"filters":['
+    '{"key":"etf_sponsor","tab":"etf","isEliteOnly":false,'
+    '"title":{"short":"Sponsor"},"options":['
+    '{"label":"Any","value":""},'
+    '{"label":"New Sponsor","value":"newsponsor"},'
+    '{"label":"Elite Sponsor","value":"elite","isEliteOnly":true}]},'
+    '{"key":"etf_holdings","tab":"etf","isEliteOnly":true,'
+    '"title":{"short":"Holdings"},"options":[]}'
+    "]};</script>"
+)
+
+
+def test_parse_etf_filters_skips_elite_only():
+    filters = etf_filters.parse_etf_filters(ETF_FILTERS_PAGE)
+    assert filters == {
+        "Sponsor": {
+            "prefix": "etf_sponsor",
+            "option": {"Any": "", "New Sponsor": "newsponsor"},
+        }
+    }
+
+
+def test_parse_etf_filters_rejects_page_without_filters():
+    with pytest.raises(ValueError, match="No ETF filters"):
+        etf_filters.parse_etf_filters("<html></html>")
+
+
+def test_etf_filters_read_live_once(monkeypatch):
+    # An option finviz adds is usable without regenerating etf_constants.
+    monkeypatch.setattr(etf_filters, "_cache", None)
+    fake = use_session(FakeResponse(text=ETF_FILTERS_PAGE))
+    view = Overview()
+    view.set_filter(filters_dict={"Sponsor": "New Sponsor"})
+    assert view.request_params["f"] == "etf_sponsor_newsponsor"
+    assert get_filter_options("Sponsor") == ["Any", "New Sponsor"]
+    assert len(fake.calls) == 1
+    assert fake.calls[0]["url"] == etf_filters.ETF_SCREENER_URL
+
+
+def test_etf_filters_fall_back_to_snapshot(monkeypatch):
+    monkeypatch.setattr(etf_filters, "_cache", None)
+    use_session(blocked_response())
+    with pytest.warns(UserWarning, match="bundled snapshot"):
+        filters = etf_filters.get_etf_filters()
+    assert filters is ETF_FILTERS
+
+
+def test_stock_filters_do_not_read_etf_page(monkeypatch):
+    monkeypatch.setattr(etf_filters, "_cache", None)
+    fake = use_session(FakeResponse(text=ETF_FILTERS_PAGE))
+    Overview().set_filter(filters_dict={"Exchange": "NASDAQ"})
+    assert fake.calls == []
 
 
 def test_screener_custom_parse_columns_prepends_zero():

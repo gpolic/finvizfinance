@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from finvizfinance.constants import (
     CUSTOM_SCREENER_COLUMNS,
-    filter_dict,
     order_dict,
     signal_dict,
 )
-from finvizfinance.util import validate_choice
+from finvizfinance.screener.etf_filters import all_filters, lookup_filter
 
 
 def get_signal() -> list[str]:
@@ -24,7 +23,7 @@ def get_filters() -> list[str]:
     Returns:
         filters(list): all the available filters
     """
-    return list(filter_dict.keys())
+    return list(all_filters().keys())
 
 
 def get_filter_options(screen_filter: str) -> list[str]:
@@ -36,8 +35,7 @@ def get_filter_options(screen_filter: str) -> list[str]:
     Returns:
         filter_options(list): all the available filters
     """
-    validate_choice(screen_filter, filter_dict, "filter")
-    return list(filter_dict[screen_filter]["option"])
+    return list(lookup_filter(screen_filter)["option"])
 
 
 def get_orders() -> list[str]:

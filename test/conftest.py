@@ -12,6 +12,8 @@ import pytest
 import requests
 
 from finvizfinance import util
+from finvizfinance.etf_constants import ETF_FILTERS
+from finvizfinance.screener import etf_filters
 
 FIXTURE_DIR = os.path.join(os.path.dirname(__file__), "fixtures")
 
@@ -150,7 +152,8 @@ def use_session(outcomes):
 
 @pytest.fixture(autouse=True)
 def _no_sleep_and_restore(request, monkeypatch):
-    """Neutralize backoff sleeps and restore the real session after each test.
+    """Neutralize backoff sleeps, pin the ETF filters to the bundled snapshot,
+    and restore the real session after each test.
 
     Live tests (``@pytest.mark.live``) keep the real ``time.sleep`` so their
     bounded backoff against a genuine Cloudflare Wall stays polite; they still
@@ -158,6 +161,9 @@ def _no_sleep_and_restore(request, monkeypatch):
     """
     if request.node.get_closest_marker("live") is None:
         monkeypatch.setattr(time, "sleep", lambda *a, **k: None)
+        # ETF filters are read live on first use; offline tests use the
+        # bundled snapshot unless they reset the cache themselves.
+        monkeypatch.setattr(etf_filters, "_cache", ETF_FILTERS)
     original = util.get_session()
     original_proxy = util.proxy_dict
     yield

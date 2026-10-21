@@ -42,6 +42,28 @@ NUM_COL = [
     "Insider ",
 ]
 
+# Snapshot cells that hold two values, e.g. "4.26% 4.98%" or "1.06 (0.31%)".
+# Each value also gets its own key; the combined key is kept as well.
+SPLIT_COL = {
+    "Dividend Gr. 3/5Y": ["Dividend Gr. 3Y", "Dividend Gr. 5Y"],
+    "EPS past 3/5Y": ["EPS past 3Y", "EPS past 5Y"],
+    "Sales past 3/5Y": ["Sales past 3Y", "Sales past 5Y"],
+    "EPS/Sales Surpr.": ["EPS Surprise", "Sales Surprise"],
+    "Dividend TTM": ["Dividend TTM Amount", "Dividend TTM %"],
+    "Dividend Est.": ["Dividend Est. Amount", "Dividend Est. %"],
+    "52W High": ["52W High Price", "52W High %"],
+    "52W Low": ["52W Low Price", "52W Low %"],
+}
+
+# Keys finviz renamed or dropped, mapped to the key now holding the same
+# value; the old name is filled in so existing callers keep working.
+LEGACY_KEYS = {
+    "52W Range From": "52W Low Price",
+    "52W Range To": "52W High Price",
+    "Change": "Change %",
+    "ATR": "ATR (14)",
+}
+
 
 class Quote:
     """quote
@@ -206,6 +228,9 @@ class finvizfinance:
                 cols = row.find_all("td")
                 cols = [i.text for i in cols]
                 fundament_info = self._parse_column(cols, raw, fundament_info)
+        for old, new in LEGACY_KEYS.items():
+            if old not in fundament_info and new in fundament_info:
+                fundament_info[old] = fundament_info[new]
         self.info["fundament"] = fundament_info
 
         if output_format == "dict":
@@ -244,6 +269,36 @@ class finvizfinance:
                             fundament_info[header] = number_convert(value)
                         except ValueError:
                             fundament_info[header] = value
+                    if header in SPLIT_COL:
+                        self._parse_split(header, fundament_info, value, raw)
+                    elif header == "Option/Short":
+                        self._parse_option_short(fundament_info, value, raw)
+        return fundament_info
+
+    def _parse_split(
+        self, header: str, fundament_info: dict, value: str, raw: bool
+    ) -> dict:
+        parts = value.replace("(", " ").replace(")", " ").split()
+        if len(parts) != 2:
+            # Unexpected shape; the combined key alone carries the value.
+            return fundament_info
+        for name, part in zip(SPLIT_COL[header], parts, strict=True):
+            if raw:
+                fundament_info[name] = part
+            else:
+                try:
+                    fundament_info[name] = number_convert(part)
+                except ValueError:
+                    fundament_info[name] = part
+        return fundament_info
+
+    def _parse_option_short(self, fundament_info: dict, value: str, raw: bool) -> dict:
+        # finviz merged the former Optionable / Shortable cells: "Yes / No".
+        parts = [part.strip() for part in value.split("/")]
+        if len(parts) != 2:
+            return fundament_info
+        for name, part in zip(["Optionable", "Shortable"], parts, strict=True):
+            fundament_info[name] = part if raw else part == "Yes"
         return fundament_info
 
     def _parse_52w_range(
@@ -405,7 +460,7 @@ class finvizfinance:
                 # Malformed / empty news line; skip explicitly (no silent hide).
                 continue
             news_date = cols[0].text
-            title = cols[1].a.text
+            title = cols[1].a.text.strip()
             link = cols[1].a["href"]
             source = cols[1].span.text[1:-1] if cols[1].span else ""
             news_time = news_date.split()

@@ -76,6 +76,17 @@ def test_live_quote_fundament():
     assert isinstance(fundament, dict) and fundament
     # "Company" is required by the parser and is the most stable field.
     assert fundament.get("Company")
+    # The merged Option/Short cell still yields the Optionable/Shortable keys.
+    assert {"Optionable", "Shortable"} <= set(fundament)
+    # Keys finviz renamed or dropped are still filled in.
+    assert {"52W Range From", "52W Range To", "Change", "ATR"} <= set(fundament)
+
+
+def test_live_quote_fundament_numeric():
+    # raw=False converts every cell; a placeholder or two-value cell must not
+    # crash the conversion.
+    fundament = _live(lambda: finvizfinance("AAPL").ticker_fundament(raw=False))
+    assert isinstance(fundament.get("P/E"), float)
 
 
 def test_live_quote_description():
@@ -88,6 +99,7 @@ def test_live_quote_news():
     # AAPL always has recent news; a None here means the table drifted away.
     assert isinstance(df, pd.DataFrame)
     _assert_columns(df, {"Date", "Title", "Link", "Source"})
+    assert all(title == title.strip() for title in df["Title"])
 
 
 def test_live_statements():
@@ -104,12 +116,19 @@ def test_live_calendar():
     assert isinstance(df, pd.DataFrame)
     # The economic calendar can be legitimately empty (weekends/holidays).
     _assert_columns(df, {"Datetime", "Release", "Impact"})
+    # Rows without a release name mean the wrong calendar page was read.
+    if not df.empty:
+        assert df["Release"].notna().any()
 
 
 def test_live_insider():
     df = _live(lambda: Insider().get_insider())
     assert isinstance(df, pd.DataFrame)
     _assert_columns(df, {"Ticker", "Owner", "Transaction", "SEC Form 4 Link"})
+    # The logo's fallback letter doubles the first letter ("AARQQ") on every
+    # row when the ticker is read from the cell text.
+    tickers = [t for t in df["Ticker"] if len(t) > 1]
+    assert not tickers or not all(t[0] == t[1] for t in tickers)
 
 
 def test_live_news():

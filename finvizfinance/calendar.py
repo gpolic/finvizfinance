@@ -16,7 +16,8 @@ import pandas as pd
 from finvizfinance.exceptions import FinvizParseError
 from finvizfinance.util import decode_json_after, warn_missing, web_scrap
 
-CALENDAR_URL = "https://finviz.com/calendar.ashx"
+# calendar.ashx now serves the earnings calendar; the economic one moved here.
+CALENDAR_URL = "https://finviz.com/calendar/economic"
 
 
 def _script_json(soup: Any, function_name: str) -> list[Any] | None:

@@ -1,7 +1,13 @@
 """Offline fixture tests for the insider scraper (see test_quote for the pattern)."""
 
 import pytest
-from conftest import FakeResponse, blocked_response, html_response, use_session
+from conftest import (
+    FakeResponse,
+    blocked_response,
+    html_response,
+    load_fixture,
+    use_session,
+)
 
 from finvizfinance.exceptions import FinvizBlockedError, FinvizParseError
 from finvizfinance.insider import INSIDER_URL, Insider
@@ -13,6 +19,25 @@ def test_insider_real():
     assert not df.empty
     assert df.iloc[0]["Ticker"] == "AAPL"
     assert df.iloc[0]["SEC Form 4 Link"] == "https://sec.gov/f/1"
+    assert df.iloc[0]["#Shares"] == 1000
+
+
+def test_insider_ticker_from_boxover_attribute():
+    # Regression: the ticker cell also renders the logo's fallback letter, so
+    # its text reads "AAAPL"; the clean symbol is in data-boxover-ticker.
+    # finviz sets the attribute on every cell of the row, not only the ticker.
+    html = (
+        load_fixture("insider.html")
+        .replace(
+            "<td>AAPL</td>",
+            '<td data-boxover-ticker="AAPL"><span><span>A</span>'
+            '<a href="stock?t=AAPL">AAPL</a></span></td>',
+        )
+        .replace("<td>1,000</td>", '<td data-boxover-ticker="AAPL">1,000</td>')
+    )
+    use_session(FakeResponse(text=html))
+    df = Insider().get_insider()
+    assert list(df["Ticker"]) == ["AAPL", "MSFT"]
     assert df.iloc[0]["#Shares"] == 1000
 
 

@@ -338,8 +338,13 @@ def row_to_dict(
     """
     info: dict[str, Any] = {}
     for i, col in enumerate(cols):
+        header = table_header[i]
         text = col.text
-        info[table_header[i]] = number_convert(text) if i in num_col_index else text
+        # A ticker cell also renders the logo's fallback letter, so its text
+        # reads "AARQQ"; the clean symbol is in data-boxover-ticker.
+        if header == "Ticker" and col.get("data-boxover-ticker"):
+            text = col["data-boxover-ticker"]
+        info[header] = number_convert(text) if i in num_col_index else text
     return info
 
 
@@ -476,9 +481,9 @@ def number_convert(num: str) -> float | None:
     Return:
         num(float or None): number converted to float or None
     """
+    num = num.strip() if num else num  # Remove any surrounding whitespace
     if not num or num == "-":  # Check if the string is empty or is "-"
         return None
-    num = num.strip()  # Remove any surrounding whitespace
     if num[-1] == "%":
         return float(num[:-1]) / 100
     elif num[-1] == "B":

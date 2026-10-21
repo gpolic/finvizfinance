@@ -26,6 +26,13 @@ def _records(frame: pd.DataFrame) -> list[dict[str, Any]]:
 # --- current shape: <script id="route-init-data" type="application/json"> ------
 
 
+def test_calendar_reads_economic_calendar_page():
+    # calendar.ashx now serves the earnings calendar.
+    fake = use_session(html_response("calendar_route_init.html"))
+    Calendar().calendar()
+    assert fake.calls[0]["url"] == "https://finviz.com/calendar/economic"
+
+
 def test_calendar_route_init_data():
     use_session(html_response("calendar_route_init.html"))
     df = Calendar().calendar()

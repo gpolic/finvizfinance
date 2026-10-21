@@ -166,6 +166,8 @@ def test_number_convert():
     assert number_convert("2B") == 2000000000
     assert number_convert("-") is None
     assert number_convert("1,234") == 1234.0
+    # A whitespace-only cell (e.g. the quote "Trades" placeholder) is empty.
+    assert number_convert("\n\n") is None
 
 
 def test_number_covert_is_deprecated_alias():
